@@ -1,3 +1,5 @@
+[![Build Status](https://github.com/jrouwe/JoltPhysicsHelloWorld/actions/workflows/build.yml/badge.svg)](https://github.com/jrouwe/JoltPhysicsHelloWorld/actions/)
+
 # JoltPhysics HelloWorld
 
 Demonstrates how to use CMake to include Jolt Physics in your own project with a simple HelloWorld application.
