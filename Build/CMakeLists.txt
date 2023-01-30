@@ -7,13 +7,6 @@ include(FetchContent)
 # The configurations we support
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Distribution")
 
-# Only compile the JoltPhysics library and none of its examples
-set(TARGET_UNIT_TESTS OFF)
-set(TARGET_HELLO_WORLD OFF)
-set(TARGET_PERFORMANCE_TEST OFF)
-set(TARGET_SAMPLES OFF)
-set(TARGET_VIEWER OFF)
-
 # When turning this option on, the library will be compiled using doubles for positions. This allows for much bigger worlds.
 set(DOUBLE_PRECISION OFF)
 
@@ -46,7 +39,7 @@ set(USE_FMADD ON)
 FetchContent_Declare(
         JoltPhysics
         GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics"
-        GIT_TAG "33f94be38781768b76d828c48e8babeef2093965"
+        GIT_TAG "9105bb9ca5c6f4a20a0569dcb90301ef7ba4b379"
 		SOURCE_SUBDIR "Build"
 )
 FetchContent_MakeAvailable(JoltPhysics)
