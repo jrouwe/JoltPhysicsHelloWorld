@@ -4,7 +4,7 @@ project(HelloWorld CXX)
 
 include(FetchContent)
 
-# The configuration we support
+# The configurations we support
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Distribution")
 
 # Only compile the JoltPhysics library and none of its examples
@@ -26,6 +26,11 @@ set(CROSS_PLATFORM_DETERMINISTIC OFF)
 # When turning this option on, the library will be compiled with interprocedural optimizations enabled, also known as link-time optimizations or link-time code generation
 set(INTERPROCEDURAL_OPTIMIZATION ON)
 
+# When turning this on, in Debug and Release mode, the library will emit extra code to ensure that the 4th component of a 3-vector is kept the same as the 3rd component 
+# and will enable floating point exceptions during simulation to detect divisions by zero. 
+# Note that this currently only works using MSVC. Clang turns Float2 into a SIMD vector sometimes causing floating point exceptions (the option is ignored).
+set(FLOATING_POINT_EXCEPTIONS_ENABLED OFF)
+
 # Select X86 processor features to use, by default the library compiles with AVX2, if everything is off it will be SSE2 compatible.
 set(USE_SSE4_1 ON)
 set(USE_SSE4_2 ON)
@@ -41,7 +46,7 @@ set(USE_FMADD ON)
 FetchContent_Declare(
         JoltPhysics
         GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics"
-        GIT_TAG "e1e33ac424a3c37daf808d61c85542bfbfa0349a"
+        GIT_TAG "33f94be38781768b76d828c48e8babeef2093965"
 		SOURCE_SUBDIR "Build"
 )
 FetchContent_MakeAvailable(JoltPhysics)
@@ -88,63 +93,9 @@ if (("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows" OR "${CMAKE_SYSTEM_NAME}" STREQUA
 		else()
 			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast") # Clang doesn't use fast math because it cannot be turned off inside a single compilation unit
 		endif()
-		if ("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86" OR "${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
-			if (USE_AVX512)
-				set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX512")
-			elseif (USE_AVX2)
-				set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
-			elseif (USE_AVX)
-				set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX")
-			endif()	
-			if (USE_SSE4_1)
-				add_compile_definitions(JPH_USE_SSE4_1)
-			endif()
-			if (USE_SSE4_2)
-				add_compile_definitions(JPH_USE_SSE4_2)
-			endif()
-			if (USE_LZCNT)
-				add_compile_definitions(JPH_USE_LZCNT)
-			endif()
-			if (USE_TZCNT)
-				add_compile_definitions(JPH_USE_TZCNT)
-			endif()
-			if (USE_F16C)
-				add_compile_definitions(JPH_USE_F16C)
-			endif()
-			if (USE_FMADD AND NOT CROSS_PLATFORM_DETERMINISTIC)
-				add_compile_definitions(JPH_USE_FMADD)
-			endif()
-		endif()
-		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /DJPH_FLOATING_POINT_EXCEPTIONS_ENABLED") # Clang turns Float2 into a vector sometimes causing floating point exceptions
-		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /DJPH_FLOATING_POINT_EXCEPTIONS_ENABLED")
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /showFilenames")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Qunused-arguments") # Clang emits warnings about unused arguments such as /MP and /GL
-		if (USE_AVX512)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f -mavx512vl -mavx512dq -mavx2 -mbmi -mpopcnt -mlzcnt -mf16c")
-		elseif (USE_AVX2)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mbmi -mpopcnt -mlzcnt -mf16c")
-		elseif (USE_AVX)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -mpopcnt")
-		elseif (USE_SSE4_2)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -mpopcnt")
-		elseif (USE_SSE4_1)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.1")
-		else()
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2")
-		endif()
-		if (USE_LZCNT)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mlzcnt")
-		endif()
-		if (USE_TZCNT)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mbmi")
-		endif()
-		if (USE_F16C)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mf16c")
-		endif()
-		if (USE_FMADD AND NOT CROSS_PLATFORM_DETERMINISTIC)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfma")
-		endif()
 	endif()
 elseif ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" OR "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin" OR "${CMAKE_SYSTEM_NAME}" STREQUAL "iOS" OR MINGW OR EMSCRIPTEN)
 	# Set general compiler flags
@@ -167,39 +118,6 @@ elseif ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" OR "${CMAKE_SYSTEM_NAME}" STREQU
 		# On clang 14 and later we can turn off float contraction through a pragma, older versions and deterministic versions need it off always, see Core.h
 		if (CMAKE_CXX_COMPILER_VERSION LESS 14 OR CROSS_PLATFORM_DETERMINISTIC)
 			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffp-contract=off")
-		endif()
-	endif()
-
-	# Platform specific compiler flags
-	if (CMAKE_OSX_ARCHITECTURES MATCHES "arm64" OR "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
-		# ARM64
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-	elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64" OR "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "AMD64")
-		# X64
-		if (USE_AVX512)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f -mavx512vl -mavx512dq -mavx2 -mbmi -mpopcnt -mlzcnt -mf16c")
-		elseif (USE_AVX2)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mbmi -mpopcnt -mlzcnt -mf16c")
-		elseif (USE_AVX)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -mpopcnt")
-		elseif (USE_SSE4_2)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -mpopcnt")
-		elseif (USE_SSE4_1)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.1")
-		else()
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2")
-		endif()
-		if (USE_LZCNT)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mlzcnt")
-		endif()
-		if (USE_TZCNT)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mbmi")
-		endif()
-		if (USE_F16C)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mf16c")
-		endif()
-		if (USE_FMADD AND NOT CROSS_PLATFORM_DETERMINISTIC)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfma")
 		endif()
 	endif()
 
