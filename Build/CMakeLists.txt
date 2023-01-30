@@ -16,7 +16,9 @@ set(GENERATE_DEBUG_SYMBOLS ON)
 # When turning this option on, the library will be compiled in such a way to attempt to keep the simulation deterministic across platforms
 set(CROSS_PLATFORM_DETERMINISTIC OFF)
 
-# When turning this option on, the library will be compiled with interprocedural optimizations enabled, also known as link-time optimizations or link-time code generation
+# When turning this option on, the library will be compiled with interprocedural optimizations enabled, also known as link-time optimizations or link-time code generation.
+# Note that if you turn this on you need to use SET_INTERPROCEDURAL_OPTIMIZATION() or set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON) to enable LTO specificly for your own project as well.
+# If you don't do this you may get an error: /usr/bin/ld: libJolt.a: error adding symbols: file format not recognized
 set(INTERPROCEDURAL_OPTIMIZATION ON)
 
 # When turning this on, in Debug and Release mode, the library will emit extra code to ensure that the 4th component of a 3-vector is kept the same as the 3rd component 
@@ -39,7 +41,7 @@ set(USE_FMADD ON)
 FetchContent_Declare(
         JoltPhysics
         GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics"
-        GIT_TAG "9105bb9ca5c6f4a20a0569dcb90301ef7ba4b379"
+        GIT_TAG "17de06d4e84cbf788281610af310a02262ed9efb"
 		SOURCE_SUBDIR "Build"
 )
 FetchContent_MakeAvailable(JoltPhysics)
@@ -123,29 +125,16 @@ elseif ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" OR "${CMAKE_SYSTEM_NAME}" STREQU
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 endif()
 
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF)
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DISTRIBUTION OFF)
-
-# On ARM, whole program optimization triggers an internal compiler error during code gen, so we don't turn it on
-if (INTERPROCEDURAL_OPTIMIZATION AND NOT ("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "ARM64") AND NOT ("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "ARM"))
-	include(CheckIPOSupported)
-	check_ipo_supported(RESULT IS_IPO_SUPPORTED OUTPUT IPO_CHECK_OUTPUT)
-
-	if (IS_IPO_SUPPORTED)
-		set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
-		set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DISTRIBUTION ON)
-	else()
-		message(WARNING "Interprocedural optimizations are not supported: ${IPO_CHECK_OUTPUT}")
-	endif()
-endif()
-
 # Set linker flags
 set(CMAKE_EXE_LINKER_FLAGS_DISTRIBUTION "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
 
+# Enable link time optimization in Release and Distribution mode if requested and available
+SET_INTERPROCEDURAL_OPTIMIZATION()
+
 # Compile the HelloWorld application
-add_executable(${PROJECT_NAME} ../Source/HelloWorld.cpp)
+add_executable(HelloWorld ../Source/HelloWorld.cpp)
 target_include_directories(HelloWorld PUBLIC ${JoltPhysics_SOURCE_DIR}/..)
-target_link_libraries(${PROJECT_NAME} Jolt)
+target_link_libraries(HelloWorld Jolt)
 
 # Make this project the startup project
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "HelloWorld")
