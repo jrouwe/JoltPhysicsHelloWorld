@@ -26,6 +26,9 @@ set(INTERPROCEDURAL_OPTIMIZATION ON)
 # Note that this currently only works using MSVC. Clang turns Float2 into a SIMD vector sometimes causing floating point exceptions (the option is ignored).
 set(FLOATING_POINT_EXCEPTIONS_ENABLED OFF)
 
+# Number of bits to use in ObjectLayer. Can be 16 or 32.
+set(OBJECT_LAYER_BITS 16)
+
 # Select X86 processor features to use, by default the library compiles with AVX2, if everything is off it will be SSE2 compatible.
 set(USE_SSE4_1 ON)
 set(USE_SSE4_2 ON)
@@ -41,7 +44,7 @@ set(USE_FMADD ON)
 FetchContent_Declare(
         JoltPhysics
         GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics"
-        GIT_TAG "49a2cfb66cff91028f31e04b5dc9960a6206ecf8"
+        GIT_TAG "364071164528f173539d49c7043e94798a40473d"
 		SOURCE_SUBDIR "Build"
 )
 FetchContent_MakeAvailable(JoltPhysics)
