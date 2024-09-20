@@ -44,7 +44,7 @@ set(USE_FMADD ON)
 FetchContent_Declare(
         JoltPhysics
         GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics"
-        GIT_TAG "v5.1.0"
+        GIT_TAG "6416bcf5871580e2a78ed7ecb17f5e5ef4b400bd"
 		SOURCE_SUBDIR "Build"
 )
 FetchContent_MakeAvailable(JoltPhysics)
