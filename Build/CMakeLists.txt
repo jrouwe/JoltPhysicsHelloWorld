@@ -188,5 +188,10 @@ add_executable(HelloWorld ../Source/HelloWorld.cpp)
 target_include_directories(HelloWorld PUBLIC ${JoltPhysics_SOURCE_DIR}/..)
 target_link_libraries(HelloWorld Jolt)
 
+if (EMSCRIPTEN)
+	# Increase stack and memory size when running with emscripten
+	target_link_options(HelloWorld PUBLIC -sSTACK_SIZE=1048576 -sINITIAL_MEMORY=134217728)
+endif()
+
 # Make this project the startup project
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "HelloWorld")
