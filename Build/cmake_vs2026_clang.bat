@@ -1,10 +1,10 @@
 @echo off
-cmake -S . -B VS2022_Clang -G "Visual Studio 17 2022" -A x64 -T ClangCL %*
+cmake -S . -B VS2026_Clang -G "Visual Studio 18 2026" -A x64 -T ClangCL %*
 echo:
 echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 echo Make sure to install:
-echo - C++ Clang Compiler for Windows 12.0.0+
-echo - C++ Clang-cl for v143+ build tools (x64/x86)
+echo - C++ Clang Compiler for Windows 20+
+echo - MSBuild support for LLVM (clang-cl) toolset
 echo Using the Visual Studio Installer
 echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-echo Open VS2022_Clang\HelloWorld.sln to build the project.
+echo Open VS2026_Clang\HelloWorld.slnx to build the project.
