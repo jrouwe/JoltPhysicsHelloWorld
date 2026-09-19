@@ -13,7 +13,7 @@ set(DOUBLE_PRECISION OFF)
 # When turning this option on, the library will be compiled with debug symbols
 set(GENERATE_DEBUG_SYMBOLS ON)
 
-# When turning this option on, the library will override the default CMAKE_CXX_FLAGS_DEBUG/RELEASE values, otherwise they will use the platform defaults
+# When turning this option on, the library will override the default CMAKE_CXX_FLAGS_RELEASE values, otherwise they will use the platform defaults
 set(OVERRIDE_CXX_FLAGS ON)
 
 # When turning this option on, the library will be compiled in such a way to attempt to keep the simulation deterministic across platforms
@@ -75,24 +75,24 @@ if (MSVC)
 	endif()
 
 	# Set general compiler flags
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:__cplusplus /Gm- /MP /nologo /diagnostics:classic /FC /fp:except- /Zc:inline")
+	add_compile_options(/Zc:__cplusplus /MP /nologo /diagnostics:classic /FC /fp:except- /Zc:inline)
 
 	# Enable warnings
 	if (ENABLE_ALL_WARNINGS)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Wall /WX")
+		add_compile_options(/Wall /WX)
 	endif()
 	
 	# Optionally generate debug symbols
 	if (GENERATE_DEBUG_SYMBOLS)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
+		add_compile_options(/Zi)
 	endif()
 
 	if (NOT CPP_RTTI_ENABLED)
-		# Set compiler flag for disabling RTTI
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR-")
+		# Disable RTTI
+		add_compile_options(/GR-)
 	else()
-		# Set compiler flag for enabling RTTI
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR")
+		# Enable RTTI
+		add_compile_options(/GR)
 	endif()
 
 	if (NOT CPP_EXCEPTIONS_ENABLED)
@@ -100,80 +100,83 @@ if (MSVC)
 		string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
 		# Disable warning about STL and compiler-generated types using noexcept when exceptions are disabled
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4577")
+		add_compile_options(/wd4577)
 	else()
 		# Enable exceptions
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+		add_compile_options(/EHsc)
 	endif()
 
-	# Set compiler flags for various configurations
 	if (OVERRIDE_CXX_FLAGS)
-		set(CMAKE_CXX_FLAGS_DEBUG "/GS /Od /Ob0 /RTC1")
-		set(CMAKE_CXX_FLAGS_RELEASE "/GS- /Gy /O2 /Oi /Ot")
+		# No buffer security checks, enable function-level linking, enable intrinsic functions, favor fast code
+		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /GS- /Gy /Oi /Ot")
 	endif()
 
 	# Set linker flags
+	if (GENERATE_DEBUG_SYMBOLS)
+		add_link_options(/DEBUG)
+	endif()
 	if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 		if (CROSS_PLATFORM_DETERMINISTIC)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:precise")
+			add_compile_options(/fp:precise)
 		else()
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast") # Clang doesn't use fast math because it cannot be turned off inside a single compilation unit
+			add_compile_options(/fp:fast) # Clang doesn't use fast math because it cannot be turned off inside a single compilation unit
 		endif()
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /showFilenames")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Qunused-arguments") # Clang emits warnings about unused arguments such as /MP and /GL
+		add_compile_options(/showFilenames -Qunused-arguments) # Clang emits warnings about unused arguments such as /MP and /GL
 	endif()
 else()
 	# Enable warnings
 	if (ENABLE_ALL_WARNINGS)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
+		add_compile_options(-Wall -Werror)
 	endif()
 
 	# Optionally generate debug symbols
 	if (GENERATE_DEBUG_SYMBOLS)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+		add_compile_options(-g${JPH_DEBUG_SYMBOL_FORMAT})
 	endif()
 
 	if (NOT CPP_RTTI_ENABLED)
-		# Set compiler flag for disabling RTTI
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+		# Disable RTTI
+		add_compile_options(-fno-rtti)
 	else()
-		# Set compiler flag for enabling RTTI
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
+		# Enable RTTI
+		add_compile_options(-frtti)
 	endif()
 
 	if (NOT CPP_EXCEPTIONS_ENABLED)
-		# Set compiler flag for disabling exception-handling
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
+		# Disable exception-handling
+		add_compile_options(-fno-exceptions)
 	else()
-		# Set compiler flag for enabling exception-handling
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
+		# Enable exception-handling
+		add_compile_options(-fexceptions)
 	endif()
 
 	if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 		# Also disable -Wstringop-overflow or it will generate false positives that can't be disabled from code when link-time optimizations are enabled
-		# Also turn off automatic fused multiply add contractions, there doesn't seem to be a way to do this selectively through the macro JPH_PRECISE_MATH_OFF
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-stringop-overflow -ffp-contract=off")
-	else()
-		# Do not use -ffast-math since it cannot be turned off in a single compilation unit under clang, see Core.h
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffp-model=precise")
+		# Also disable -Wno-psabi to avoid messages of the form note: parameter passing for argument of type '...' changed in GCC 7.1
+		add_compile_options(-Wno-stringop-overflow -Wno-psabi)
+	endif()
 
-		# On clang 14 and later we can turn off float contraction through a pragma, older versions and deterministic versions need it off always, see Core.h
-		if (CMAKE_CXX_COMPILER_VERSION LESS 14 OR CROSS_PLATFORM_DETERMINISTIC)
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffp-contract=off")
+	# Do not use -ffast-math since it creates too many inaccuracies under clang
+	# FMA is not compatible with cross platform determinism
+	if (CROSS_PLATFORM_DETERMINISTIC OR NOT USE_FMADD OR EMSCRIPTEN)
+		add_compile_options(-ffp-contract=off)
+	else()
+		if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "^x86")
+			# On x86 our FMA intrinsics are preserved
+			add_compile_options(-ffp-contract=fast)
+		else()
+			# On ARM (and maybe other platforms) using 'fast' mode actually replaces a FMA intrinsic in Debug / when using LTO (?) with a 'mul' and an 'add' causing us to lose precision
+			add_compile_options(-ffp-contract=on)
 		endif()
 	endif()
 
 	# See https://github.com/jrouwe/JoltPhysics/issues/922. When compiling with DOUBLE_PRECISION=YES and CMAKE_OSX_DEPLOYMENT_TARGET=10.12 clang triggers a warning that we silence here.
 	if ("${CMAKE_SYSTEM_NAME}" MATCHES "Darwin" AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-allocation")
+		add_compile_options(-faligned-allocation)
 	endif()
 
 	# Set compiler flags for various configurations
-	if (OVERRIDE_CXX_FLAGS)
-		set(CMAKE_CXX_FLAGS_DEBUG "")
-		set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-	endif()
 	set(CMAKE_CXX_FLAGS_DISTRIBUTION "${CMAKE_CXX_FLAGS_RELEASE}")
 endif()
 
